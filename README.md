@@ -268,14 +268,6 @@ bin/miser audit --explain --account claude-work --integration claude logs.jsonl
 
 Claude billing pull is not automatic yet. Import an invoice CSV for exact Claude spend.
 
-## Savings Model
-
-Miser should not promise 90% savings across every company bill. That is not credible.
-
-The more honest target:
-
-- 25-50% total bill reduction for messy or high-volume AI usage
-- 80-90% savings on specific repetitive workflows
 
 The high-savings workflows usually come from stacking cheaper paths:
 
@@ -311,10 +303,6 @@ Yes. It can import invoices and reconcile usage rows to actual invoice spend so 
 **Does the proxy store prompts?**
 
 Not by default. Proxy logs store fingerprints and metadata. Use `--store-prompts` only when you are allowed to retain prompt text.
-
-**What is the moat if Miser is open source?**
-
-The open-source layer makes adoption easy. Defensibility comes from runtime integration, workflow-specific savings policies, eval-backed routing decisions, and enterprise controls around governance, teams, approvals, and realized savings.
 
 ## Community
 

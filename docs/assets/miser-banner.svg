@@ -1,0 +1,22 @@
+<svg width="1600" height="420" viewBox="0 0 1600 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="420" rx="28" fill="#0D1117"/>
+  <rect x="1" y="1" width="1598" height="418" rx="27" stroke="#2B3440" stroke-width="2"/>
+  <path d="M0 324C240 260 367 361 555 287C742 214 859 116 1074 158C1289 200 1366 301 1600 236V420H0V324Z" fill="#111820"/>
+  <path d="M0 349C259 277 394 379 590 309C785 239 875 171 1059 199C1244 226 1350 320 1600 264" stroke="#1F6FEB" stroke-width="3" opacity="0.55"/>
+  <rect x="108" y="96" width="86" height="86" rx="22" fill="#4EA1FF"/>
+  <path d="M132 154V124H145L154 142L163 124H176V154H166V139L158 154H150L142 139V154H132Z" fill="#06111F"/>
+  <text x="108" y="243" fill="#E6EDF3" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="72" font-weight="800">Miser</text>
+  <text x="108" y="298" fill="#8B949E" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="31" font-weight="500">The AI spend control plane for production agents.</text>
+  <g transform="translate(940 96)">
+    <rect width="520" height="230" rx="18" fill="#151B23" stroke="#2B3440"/>
+    <rect x="26" y="28" width="130" height="22" rx="6" fill="#202A36"/>
+    <rect x="374" y="28" width="110" height="30" rx="15" fill="#13261A" stroke="#2EA043"/>
+    <circle cx="394" cy="43" r="5" fill="#3FB950"/>
+    <rect x="26" y="82" width="138" height="66" rx="10" fill="#0F151D" stroke="#2B3440"/>
+    <rect x="184" y="82" width="138" height="66" rx="10" fill="#0F151D" stroke="#2B3440"/>
+    <rect x="342" y="82" width="142" height="66" rx="10" fill="#0F151D" stroke="#2B3440"/>
+    <rect x="26" y="174" width="288" height="32" rx="8" fill="#202A36"/>
+    <rect x="334" y="174" width="150" height="32" rx="8" fill="#1D2A38"/>
+    <path d="M354 190H464" stroke="#4EA1FF" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

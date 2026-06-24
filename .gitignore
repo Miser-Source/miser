@@ -1,0 +1,10 @@
+bin/
+dist/
+*.test
+coverage.out
+work/
+outputs/
+.miser/
+miser-plan.yaml
+openai_bill.jsonl
+personal_openai_usage.jsonl

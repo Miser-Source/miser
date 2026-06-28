@@ -309,13 +309,14 @@ func runProxy(args []string) error {
 	}
 	apiKey := os.Getenv(*apiKeyEnv)
 	if apiKey == "" {
-		return fmt.Errorf("missing API key in %s", *apiKeyEnv)
+		fmt.Printf("No API key in %s — open the console to connect a provider key.\n", *apiKeyEnv)
 	}
 	return miser.ServeProxy(miser.ProxyOptions{
 		Addr:         *addr,
 		Provider:     *provider,
 		Upstream:     *upstream,
 		APIKey:       apiKey,
+		KeyEnv:       *apiKeyEnv,
 		LogPath:      *logPath,
 		CachePath:    *cachePath,
 		AccountID:    *account,

@@ -6,6 +6,10 @@ All notable changes to Miser will be documented here.
 
 ### Added
 
+- Redesigned browser console: ChatGPT/Codex-style chat thread, collapsible Miser inspector (decision trace + live request JSON), and a Claude-Code-style home with Quick start and live Recent traffic.
+- Terminal-style setup gate to connect a provider API key from the browser; the proxy now starts without a key and accepts it at runtime via `POST /miser/api/key` (held in memory only).
+- Disconnect action and a settings menu with selectable color themes (Midnight, White, plus vivid full-screen themes) that recolor the entire console.
+- Resizable, draggable sidebar and the full live OpenAI model lineup in the playground model picker.
 - Live OpenAI-compatible proxy.
 - Browser console with playground, request inspector, decision trace, and savings metrics.
 - Exact cache for repeated non-streaming chat/responses requests.

@@ -512,7 +512,7 @@ func TestProxyLogsAndExactCachesOpenAIRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = resp.Body.Close()
-	if !strings.Contains(string(root), "Miser Console") || !strings.Contains(string(root), "Decision Trace") {
+	if !strings.Contains(string(root), "Miser") || !strings.Contains(string(root), "Decision trace") || !strings.Contains(string(root), `id="thread"`) {
 		t.Fatalf("missing console UI:\n%s", string(root))
 	}
 

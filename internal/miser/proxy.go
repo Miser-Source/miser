@@ -21,6 +21,7 @@ type ProxyOptions struct {
 	Provider     string
 	Upstream     string
 	APIKey       string
+	KeyEnv       string
 	LogPath      string
 	CachePath    string
 	AccountID    string
@@ -34,6 +35,30 @@ type ProxyServer struct {
 	client   *http.Client
 	cache    *responseCache
 	logger   *jsonlAppender
+	mu       sync.RWMutex
+	apiKey   string
+}
+
+func (s *ProxyServer) currentKey() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.apiKey
+}
+
+func (s *ProxyServer) setKey(key string) {
+	s.mu.Lock()
+	s.apiKey = key
+	s.mu.Unlock()
+}
+
+func (s *ProxyServer) keyEnvName() string {
+	if s.opts.KeyEnv != "" {
+		return s.opts.KeyEnv
+	}
+	if s.opts.Provider == "anthropic" {
+		return "ANTHROPIC_API_KEY"
+	}
+	return "OPENAI_API_KEY"
 }
 
 func NewProxyServer(opts ProxyOptions) (*ProxyServer, error) {
@@ -75,6 +100,7 @@ func NewProxyServer(opts ProxyOptions) (*ProxyServer, error) {
 		client:   &http.Client{},
 		cache:    cache,
 		logger:   logger,
+		apiKey:   opts.APIKey,
 	}, nil
 }
 
@@ -95,8 +121,63 @@ func (s *ProxyServer) Handler() http.Handler {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("/miser/api/requests", s.handleConsoleRequests)
+	mux.HandleFunc("/miser/api/config", s.handleConfig)
+	mux.HandleFunc("/miser/api/key", s.handleSetKey)
 	mux.HandleFunc("/", s.handle)
 	return mux
+}
+
+func (s *ProxyServer) handleConfig(w http.ResponseWriter, _ *http.Request) {
+	key := s.currentKey()
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"configured":  key != "",
+		"provider":    s.opts.Provider,
+		"account":     s.opts.AccountID,
+		"integration": s.opts.Integration,
+		"key_env":     s.keyEnvName(),
+		"masked":      maskKey(key),
+	})
+}
+
+func (s *ProxyServer) handleSetKey(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.Method == http.MethodDelete {
+		s.setKey("")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"configured": false})
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+	var body struct {
+		Key string `json:"key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid request body"})
+		return
+	}
+	key := strings.TrimSpace(body.Key)
+	if key == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "key is empty"})
+		return
+	}
+	s.setKey(key)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"configured": true, "masked": maskKey(key)})
+}
+
+func maskKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "••••"
+	}
+	return key[:3] + "…" + key[len(key)-4:]
 }
 
 func ServeProxy(opts ProxyOptions) error {
@@ -215,11 +296,11 @@ func (s *ProxyServer) newUpstreamRequest(original *http.Request, body []byte) (*
 	}
 	req.Header = original.Header.Clone()
 	req.Host = s.upstream.Host
-	if s.opts.APIKey != "" && req.Header.Get("Authorization") == "" {
+	if key := s.currentKey(); key != "" && req.Header.Get("Authorization") == "" {
 		if s.opts.Provider == "anthropic" {
-			req.Header.Set("x-api-key", s.opts.APIKey)
+			req.Header.Set("x-api-key", key)
 		} else {
-			req.Header.Set("Authorization", "Bearer "+s.opts.APIKey)
+			req.Header.Set("Authorization", "Bearer "+key)
 		}
 	}
 	req.Header.Set("X-Miser-Proxy", "1")

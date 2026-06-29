@@ -69,18 +69,23 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	fmt.Fprintln(&b, `<div class="sm-themes">`)
 	themeSwatch(&b, "midnight", "Midnight", "#161616")
 	themeSwatch(&b, "white", "White", "#ffffff")
-	themeSwatch(&b, "blue", "Blue", "#36a3f7")
-	themeSwatch(&b, "indigo", "Indigo", "#5a6cf6")
-	themeSwatch(&b, "purple", "Purple", "#9a4df5")
-	themeSwatch(&b, "pink", "Pink", "#f546b3")
-	themeSwatch(&b, "rose", "Rose", "#f5487f")
+	themeSwatch(&b, "slate", "Slate", "#c2ccd6")
 	themeSwatch(&b, "red", "Red", "#f5436b")
-	themeSwatch(&b, "orange", "Orange", "#f5803a")
-	themeSwatch(&b, "amber", "Amber", "#f5b13a")
-	themeSwatch(&b, "lime", "Lime", "#82dd54")
-	themeSwatch(&b, "green", "Green", "#2fe0a0")
-	themeSwatch(&b, "teal", "Teal", "#33d6d6")
+	themeSwatch(&b, "rose", "Rose", "#f5487f")
+	themeSwatch(&b, "pink", "Pink", "#f546b3")
+	themeSwatch(&b, "magenta", "Magenta", "#f54df5")
+	themeSwatch(&b, "purple", "Purple", "#9a4df5")
+	themeSwatch(&b, "violet", "Violet", "#7d5cf6")
+	themeSwatch(&b, "indigo", "Indigo", "#5a6cf6")
+	themeSwatch(&b, "blue", "Blue", "#36a3f7")
+	themeSwatch(&b, "sky", "Sky", "#3ac6f5")
 	themeSwatch(&b, "cyan", "Cyan", "#36d6e6")
+	themeSwatch(&b, "teal", "Teal", "#33d6d6")
+	themeSwatch(&b, "green", "Green", "#2fe0a0")
+	themeSwatch(&b, "lime", "Lime", "#82dd54")
+	themeSwatch(&b, "yellow", "Yellow", "#f5d23a")
+	themeSwatch(&b, "amber", "Amber", "#f5b13a")
+	themeSwatch(&b, "orange", "Orange", "#f5803a")
 	fmt.Fprintln(&b, `</div>`)
 	fmt.Fprintln(&b, `<div class="sm-divider"></div>`)
 	fmt.Fprintln(&b, `<button class="sm-item danger" id="disconnectBtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Disconnect provider</button>`)
@@ -360,19 +365,23 @@ body[data-theme] {
   --accent-soft: hsla(var(--h) 80% 14% / .12);
   --shadow:    0 14px 44px hsla(var(--h) 80% 18% / .4);
 }
-body[data-theme="blue"]   { --h: 212; --accent: #ff5d8f; }
-body[data-theme="indigo"] { --h: 245; --accent: #ffd24d; }
-body[data-theme="purple"] { --h: 270; --accent: #ff5dba; }
-body[data-theme="pink"]   { --h: 325; --accent: #6b3df5; }
-body[data-theme="rose"]   { --h: 340; --accent: #6b3df5; }
-body[data-theme="red"]    { --h: 353; --accent: #6b3df5; }
-body[data-theme="orange"] { --h: 25;  --accent: #2563eb; }
-body[data-theme="amber"]  { --h: 40;  --accent: #da004b; }
-body[data-theme="lime"]   { --h: 95;  --accent: #d6009b; }
-body[data-theme="green"]  { --h: 150; --accent: #d6009b; }
-body[data-theme="teal"]   { --h: 180; --accent: #ff4d6d; }
-body[data-theme="cyan"]   { --h: 190; --accent: #ff4d6d; }
-/* White / light theme */
+body[data-theme="red"]     { --h: 353; --accent: #6b3df5; }
+body[data-theme="rose"]    { --h: 340; --accent: #6b3df5; }
+body[data-theme="pink"]    { --h: 325; --accent: #6b3df5; }
+body[data-theme="magenta"] { --h: 300; --accent: #ffd24d; }
+body[data-theme="purple"]  { --h: 270; --accent: #ff5dba; }
+body[data-theme="violet"]  { --h: 258; --accent: #ffd24d; }
+body[data-theme="indigo"]  { --h: 245; --accent: #ffd24d; }
+body[data-theme="blue"]    { --h: 212; --accent: #ff5d8f; }
+body[data-theme="sky"]     { --h: 200; --accent: #ff4d6d; }
+body[data-theme="cyan"]    { --h: 190; --accent: #ff4d6d; }
+body[data-theme="teal"]    { --h: 180; --accent: #ff4d6d; }
+body[data-theme="green"]   { --h: 150; --accent: #d6009b; }
+body[data-theme="lime"]    { --h: 95;  --accent: #d6009b; }
+body[data-theme="yellow"]  { --h: 52;  --accent: #6b3df5; }
+body[data-theme="amber"]   { --h: 40;  --accent: #da004b; }
+body[data-theme="orange"]  { --h: 25;  --accent: #2563eb; }
+/* Light themes */
 body[data-theme="white"] {
   color-scheme: light;
   --bg: #ffffff; --bg-2: #f3f4f6; --sidebar: #f7f8fa;
@@ -385,6 +394,19 @@ body[data-theme="white"] {
   --elev: #ffffff; --code-bg: #f3f4f6; --code-fg: #24292f;
   --accent-soft: rgba(59,130,246,.12);
   --shadow: 0 14px 44px rgba(0,0,0,.14);
+}
+body[data-theme="slate"] {
+  color-scheme: light;
+  --bg: #e9edf2; --bg-2: #dfe4ea; --sidebar: #e4e9ef;
+  --surface: rgba(20,30,50,.05); --surface-2: rgba(20,30,50,.09); --hover: rgba(20,30,50,.07);
+  --user-bubble: rgba(20,30,50,.08);
+  --text: #1c232e; --muted: rgba(28,35,46,.6); --faint: rgba(28,35,46,.42);
+  --line: rgba(20,30,50,.12); --line-2: rgba(20,30,50,.18);
+  --accent: #4f46e5; --on-accent: #ffffff;
+  --good: hsl(152 60% 30%); --warn: hsl(34 85% 32%);
+  --elev: #eef1f5; --code-bg: #dde3ea; --code-fg: #2a3340;
+  --accent-soft: rgba(79,70,229,.12);
+  --shadow: 0 14px 44px rgba(30,40,60,.16);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }

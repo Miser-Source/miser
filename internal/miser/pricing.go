@@ -53,22 +53,56 @@ func normalizeProvider(provider, model string) string {
 
 func openAIModelPricing(model string) (ModelPricing, bool) {
 	switch {
+	// GPT-5.x (future / preview catalog entries — keep most specific first)
 	case strings.Contains(model, "gpt-5.5"):
 		return publishedPricing("openai", 5.00, 0.50, 30.00), true
 	case strings.Contains(model, "gpt-5.4-mini"):
 		return publishedPricing("openai", 0.75, 0.075, 4.50), true
 	case strings.Contains(model, "gpt-5.4"):
 		return publishedPricing("openai", 2.50, 0.25, 15.00), true
+	// GPT-5 family
+	case strings.Contains(model, "gpt-5-nano"):
+		return publishedPricing("openai", 0.05, 0.005, 0.40), true
+	case strings.Contains(model, "gpt-5-mini"):
+		return publishedPricing("openai", 0.25, 0.025, 2.00), true
+	case strings.Contains(model, "gpt-5"):
+		return publishedPricing("openai", 1.25, 0.125, 10.00), true
+	// GPT-4.1 family
 	case strings.Contains(model, "gpt-4.1-mini"):
 		return publishedPricing("openai", 0.40, 0.10, 1.60), true
 	case strings.Contains(model, "gpt-4.1-nano"):
 		return publishedPricing("openai", 0.10, 0.025, 0.40), true
 	case strings.Contains(model, "gpt-4.1"):
 		return publishedPricing("openai", 2.00, 0.50, 8.00), true
+	// GPT-4o family (incl. chatgpt-4o-latest, search-preview, dated)
 	case strings.Contains(model, "gpt-4o-mini"):
 		return publishedPricing("openai", 0.15, 0.075, 0.60), true
-	case strings.Contains(model, "gpt-4o"):
+	case strings.Contains(model, "gpt-4o") || strings.Contains(model, "chatgpt-4o"):
 		return publishedPricing("openai", 2.50, 1.25, 10.00), true
+	case strings.Contains(model, "gpt-4.5"):
+		return publishedPricing("openai", 75.00, 37.50, 150.00), true
+	// Reasoning (o-series) — most specific first
+	case strings.Contains(model, "o3-pro"):
+		return publishedPricing("openai", 20.00, 5.00, 80.00), true
+	case strings.Contains(model, "o3-mini"):
+		return publishedPricing("openai", 1.10, 0.55, 4.40), true
+	case strings.Contains(model, "o3"):
+		return publishedPricing("openai", 2.00, 0.50, 8.00), true
+	case strings.Contains(model, "o4-mini"):
+		return publishedPricing("openai", 1.10, 0.275, 4.40), true
+	case strings.Contains(model, "o1-pro"):
+		return publishedPricing("openai", 150.00, 37.50, 600.00), true
+	case strings.Contains(model, "o1-mini"):
+		return publishedPricing("openai", 1.10, 0.55, 4.40), true
+	case strings.Contains(model, "o1"):
+		return publishedPricing("openai", 15.00, 7.50, 60.00), true
+	// GPT-4 / 3.5 legacy
+	case strings.Contains(model, "gpt-4-turbo"):
+		return publishedPricing("openai", 10.00, 5.00, 30.00), true
+	case strings.Contains(model, "gpt-4"):
+		return publishedPricing("openai", 30.00, 15.00, 60.00), true
+	case strings.Contains(model, "gpt-3.5"):
+		return publishedPricing("openai", 0.50, 0.25, 1.50), true
 	default:
 		return ModelPricing{}, false
 	}

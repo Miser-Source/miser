@@ -3,7 +3,7 @@
 Rough shape for Miser:
 
 ```text
-logs -> audit -> explain -> recommend -> verify -> route/patch -> track savings
+logs -> audit -> explain -> recommend -> verify -> route/patch -> track savings 
 ```
 
 ## 1. Logs
@@ -36,7 +36,7 @@ Cost basis matters:
 
 ## 2. Audit
 
-The audit finds obvious waste:
+The audit can find obvious waste:
 
 - duplicate summaries
 - long repeated context

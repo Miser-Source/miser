@@ -41,25 +41,31 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	fmt.Fprintln(&b, `<aside class="sidebar" id="sidebar">`)
 	fmt.Fprintln(&b, `<div class="side-resize" id="sideResize"></div>`)
 	fmt.Fprintln(&b, `<div class="side-top">`)
-	fmt.Fprintln(&b, `<div class="brand">`+miserMark()+`<span class="brand-name">Miser</span><span class="brand-tag">control plane</span></div>`)
-	fmt.Fprintln(&b, `<button class="new-chat" id="newChat"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>New playground</button>`)
+	fmt.Fprintln(&b, `<div class="seg">`)
+	fmt.Fprintln(&b, `<a class="seg-btn active" href="/"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</a>`)
+	fmt.Fprintln(&b, `<a class="seg-btn" href="/miser/api/requests" target="_blank"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Requests</a>`)
+	fmt.Fprintln(&b, `</div>`)
 	fmt.Fprintln(&b, `</div>`)
 
 	fmt.Fprintln(&b, `<nav class="side-nav">`)
-	fmt.Fprintln(&b, `<a class="active" href="/"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Playground</a>`)
-	fmt.Fprintln(&b, `<a href="/miser/api/requests" target="_blank"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Requests feed</a>`)
+	fmt.Fprintln(&b, `<button class="new-chat" id="newChat"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>New playground</button>`)
 	fmt.Fprintln(&b, `<a href="/healthz" target="_blank"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Health</a>`)
 	fmt.Fprintln(&b, `</nav>`)
 
 	fmt.Fprintln(&b, `<div class="side-history">`)
-	fmt.Fprintln(&b, `<p class="side-label">Recent traffic</p>`)
+	fmt.Fprintln(&b, `<div class="side-label-row"><p class="side-label">Recents</p><button class="icon-btn sm" id="histRefresh" title="Refresh"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.64 6.36"/><path d="M3 22v-6h6"/></svg></button></div>`)
 	fmt.Fprintln(&b, `<div id="history" class="history"><p class="history-empty">No intercepted requests yet.</p></div>`)
 	fmt.Fprintln(&b, `</div>`)
 
+	avatarInitial := strings.ToUpper(string([]rune(defaultString(account, provider))[0:1]))
 	fmt.Fprintln(&b, `<div class="side-foot">`)
-	fmt.Fprintln(&b, `<div class="foot-row"><div class="status"><span class="dot"></span>Proxy live</div><button class="icon-btn sm" id="settingsBtn" title="Settings"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div>`)
-	fmt.Fprintf(&b, `<dl class="meta"><div><dt>Provider</dt><dd>%s</dd></div><div><dt>Account</dt><dd>%s</dd></div><div><dt>Integration</dt><dd>%s</dd></div><div><dt>Key</dt><dd id="keyStatus" class="key-status" title="Connect or change provider key">not set</dd></div></dl>`,
-		html.EscapeString(provider), html.EscapeString(account), html.EscapeString(integration))
+	fmt.Fprintln(&b, `<button class="foot-card" id="proxyCard" title="Open Miser inspector">`)
+	fmt.Fprintln(&b, `<span class="foot-card-ico"><span class="dot"></span></span>`)
+	fmt.Fprintf(&b, `<span class="foot-card-main"><strong>Proxy live</strong><span class="foot-card-sub">%s · key <span id="keyStatus" class="key-status" title="Connect or change provider key">not set</span></span></span>`, html.EscapeString(provider))
+	fmt.Fprintln(&b, `<svg class="foot-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>`)
+	fmt.Fprintln(&b, `</button>`)
+	fmt.Fprintf(&b, `<button class="account-row" id="settingsBtn"><span class="avatar">%s</span><span class="acct-name">%s</span><span class="acct-sub">· %s</span><svg class="acct-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`,
+		html.EscapeString(avatarInitial), html.EscapeString(account), html.EscapeString(integration))
 
 	// settings popover
 	fmt.Fprintln(&b, `<div class="settings-menu" id="settingsMenu" hidden>`)
@@ -98,6 +104,7 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	fmt.Fprintln(&b, `<main class="main">`)
 	fmt.Fprintln(&b, `<header class="topbar">`)
 	fmt.Fprintln(&b, `<button class="icon-btn" id="sidebarToggle" title="Toggle sidebar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>`)
+	fmt.Fprintf(&b, `<div class="topbar-title"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><strong>Miser playground</strong><span class="chip">%s</span></div>`, html.EscapeString(provider))
 	fmt.Fprintln(&b, `<span class="topbar-spacer"></span>`)
 	fmt.Fprintln(&b, `<button class="icon-btn" id="inspectorToggle" title="Toggle Miser inspector"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>`)
 	fmt.Fprintln(&b, `</header>`)
@@ -131,6 +138,12 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 
 	// composer
 	fmt.Fprintln(&b, `<div class="composer-wrap">`)
+	fmt.Fprintln(&b, `<div class="deck-bar">`)
+	fmt.Fprintf(&b, `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20"/></svg><span class="deck-name">%s</span><span class="deck-sub">%s</span>`, html.EscapeString(account), html.EscapeString(integration))
+	fmt.Fprintln(&b, `<span class="deck-spacer"></span>`)
+	fmt.Fprintln(&b, `<span class="deck-saved" id="deckSaved">+$0.00 saved</span>`)
+	fmt.Fprintln(&b, `<button type="button" class="deck-btn" id="deckInspect">Inspector</button>`)
+	fmt.Fprintln(&b, `</div>`)
 	fmt.Fprintln(&b, `<form id="chatForm" class="composer">`)
 	fmt.Fprintln(&b, `<textarea id="prompt" rows="1" placeholder="Message the Miser proxy…  (Enter to send, Shift+Enter for newline)"></textarea>`)
 	fmt.Fprintln(&b, `<button type="submit" id="sendBtn" class="send" disabled aria-label="Send"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>`)
@@ -462,11 +475,21 @@ body {
   background: rgba(255,255,255,.16); transition: background .12s, height .12s;
 }
 .side-resize:hover::after, .app.resizing .side-resize::after { background: rgba(255,255,255,.32); height: 60px; }
-.side-top { padding: 14px 12px 8px; display: grid; gap: 12px; }
-.brand { display: flex; align-items: center; gap: 9px; padding: 4px 6px; }
-.brand .mark { border-radius: 8px; box-shadow: 0 2px 12px rgba(77,156,246,.35); flex: none; }
-.brand-name { font-weight: 650; font-size: 17px; letter-spacing: -.01em; }
-.brand-tag { color: var(--faint); font-size: 11px; margin-left: -2px; align-self: flex-end; padding-bottom: 3px; }
+.side-top { padding: 12px 10px 4px; }
+.seg {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 3px;
+}
+.seg-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 7px 10px; border-radius: 8px;
+  color: var(--muted); text-decoration: none; font-size: 13.5px; font-weight: 500;
+  transition: background .12s, color .12s;
+}
+.seg-btn svg { color: var(--faint); }
+.seg-btn:hover { color: var(--text); }
+.seg-btn.active { background: var(--surface-2); color: var(--text); border: 1px solid var(--line-2); margin: -1px; }
+.seg-btn.active svg { color: var(--text); }
 .new-chat {
   display: flex; align-items: center; gap: 10px;
   width: 100%; padding: 9px 12px;
@@ -488,25 +511,60 @@ body {
 .side-nav a:hover { background: var(--hover); color: var(--text); }
 .side-nav a.active { background: var(--surface-2); color: var(--text); box-shadow: inset 2.5px 0 0 var(--accent); }
 .side-nav a.active svg { color: var(--accent); }
-.side-history { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 8px 4px; }
-.side-label { margin: 4px 8px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); }
-.history { overflow-y: auto; display: grid; gap: 2px; padding-right: 2px; }
+.side-history { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 8px 4px; }
+.side-label-row { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 6px 8px; }
+.side-label { margin: 0; font-size: 13px; color: var(--faint); }
+.history { overflow-y: auto; display: grid; gap: 1px; padding-right: 2px; }
 .history-empty { color: var(--faint); font-size: 13px; padding: 4px 10px; }
 .hist-item {
   width: 100%; text-align: left; border: 0; background: transparent;
-  color: var(--muted); font: inherit; cursor: pointer;
-  padding: 8px 10px; border-radius: 8px; display: grid; gap: 3px;
+  color: var(--muted); font: inherit; font-size: 13.5px; cursor: pointer;
+  padding: 8px 10px; border-radius: 8px;
+  display: flex; align-items: center; gap: 9px;
   transition: background .12s;
 }
 .hist-item:hover { background: var(--hover); color: var(--text); }
-.hist-line { display: flex; align-items: center; gap: 7px; font-size: 13px; }
-.hist-line .ico { flex: none; }
+.hist-item.selected { background: var(--surface-2); color: var(--text); }
+.hist-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.hist-dot.accent { background: var(--accent); }
+.hist-dot.hit { background: var(--good); }
+.hist-dot.miss { background: var(--warn); }
 .hist-model { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hist-sub { font-size: 11px; color: var(--faint); display: flex; gap: 8px; }
-.side-foot { position: relative; border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 10px; }
-.foot-row { display: flex; align-items: center; justify-content: space-between; }
-.icon-btn.sm { width: 28px; height: 28px; border-radius: 7px; }
-.status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.side-foot { position: relative; padding: 10px; display: grid; gap: 6px; }
+.icon-btn.sm { width: 26px; height: 26px; border-radius: 7px; }
+.foot-card {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 13px;
+  padding: 11px 12px; font: inherit; color: var(--text); cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.foot-card:hover { background: var(--hover); border-color: var(--line-2); }
+.foot-card-ico {
+  flex: none; width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.foot-card-main { min-width: 0; flex: 1; display: grid; gap: 1px; }
+.foot-card-main strong { font-size: 13.5px; font-weight: 600; }
+.foot-card-sub { font-size: 11.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foot-card-arrow { flex: none; color: var(--faint); transition: transform .15s, color .15s; }
+.foot-card:hover .foot-card-arrow { transform: translateX(2px); color: var(--text); }
+.account-row {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  background: transparent; border: 0; border-radius: 9px;
+  padding: 7px 8px; font: inherit; color: var(--text); font-size: 13.5px; cursor: pointer;
+  transition: background .12s;
+}
+.account-row:hover { background: var(--hover); }
+.avatar {
+  flex: none; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 12px; font-weight: 700;
+}
+.acct-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-sub { color: var(--faint); font-size: 12.5px; white-space: nowrap; }
+.acct-caret { margin-left: auto; color: var(--faint); }
 .settings-menu {
   position: absolute; bottom: calc(100% - 4px); left: 12px; right: 12px; z-index: 70;
   background: color-mix(in srgb, var(--elev) 88%, transparent);
@@ -537,11 +595,7 @@ body {
 .sm-item.danger svg { color: #ff7a7a; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 rgba(31,209,139,.6); animation: pulse 2.4s infinite; }
 @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(31,209,139,.5);} 70%{box-shadow:0 0 0 7px rgba(31,209,139,0);} 100%{box-shadow:0 0 0 0 rgba(31,209,139,0);} }
-.meta { margin: 0; display: grid; gap: 5px; }
-.meta div { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
-.meta dt { color: var(--faint); margin: 0; }
-.meta dd { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
-.key-status { cursor: pointer; font-family: var(--mono); font-size: 11px; }
+.key-status { cursor: pointer; font-family: var(--mono); }
 .key-status:hover { color: var(--accent); }
 
 /* ---------- Main ---------- */
@@ -549,6 +603,13 @@ body {
 .topbar {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px;
+}
+.topbar-title { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); }
+.topbar-title svg { flex: none; color: var(--faint); }
+.topbar-title strong { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip {
+  flex: none; font-size: 12px; padding: 2px 9px; border-radius: 7px;
+  background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
 }
 .topbar-spacer { flex: 1; }
 .icon-btn {
@@ -653,6 +714,23 @@ body {
 
 /* ---------- Composer ---------- */
 .composer-wrap { padding: 6px 24px 12px; }
+.deck-bar {
+  max-width: 768px; margin: 0 auto 8px;
+  display: flex; align-items: center; gap: 9px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 12px; font-size: 13px; color: var(--muted);
+}
+.deck-bar > svg { flex: none; color: var(--faint); }
+.deck-name { color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-sub { color: var(--faint); white-space: nowrap; }
+.deck-spacer { flex: 1; }
+.deck-saved { color: var(--good); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deck-btn {
+  flex: none; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 12.5px; font-weight: 500; padding: 5px 12px; border-radius: 9px; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.deck-btn:hover { background: var(--hover); border-color: var(--accent); }
 .composer {
   max-width: 768px; margin: 0 auto;
   display: flex; align-items: flex-end; gap: 8px;
@@ -948,6 +1026,7 @@ function renderStats() {
   $('m_rate').textContent = reqs ? pct(hits / reqs) : '0%';
   $('m_spend').textContent = money(spend, 2);
   const hs = $('homeSaved'); if (hs) hs.textContent = money(saved, 2) + ' saved so far';
+  const ds = $('deckSaved'); if (ds) ds.textContent = '+' + money(saved, 2) + ' saved';
 }
 
 function chevronSVG() {
@@ -983,14 +1062,15 @@ function renderHistory() {
   el.innerHTML = rows.map((r, i) => {
     const d = decisionFor(r);
     const t = r.timestamp ? new Date(r.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
-    return '<button class="hist-item" data-i="' + i + '">' +
-      '<span class="hist-line"><span class="tag ' + (d.kind==="hit"?"hit":(d.kind==="pass"?"miss":"")) + '" style="padding:1px 6px"><span class="d"></span></span>' +
-      '<span class="hist-model">' + escapeHTML(r.model || 'unknown') + '</span></span>' +
-      '<span class="hist-sub"><span>' + escapeHTML(d.action) + '</span><span>' + t + '</span></span>' +
+    const dot = d.kind === 'hit' ? 'hit' : (d.kind === 'pass' ? 'miss' : 'accent');
+    const sel = state.selected && state.selected.id === r.id ? ' selected' : '';
+    return '<button class="hist-item' + sel + '" data-i="' + i + '" title="' + escapeHTML(d.action + ' · ' + t) + '">' +
+      '<span class="hist-dot ' + dot + '"></span>' +
+      '<span class="hist-model">' + escapeHTML(r.model || 'unknown') + '</span>' +
     '</button>';
   }).join('');
   el.querySelectorAll('.hist-item').forEach(n => n.addEventListener('click', () => {
-    const r = rows[Number(n.dataset.i)]; select(r); if (window.innerWidth <= 880) openInspector();
+    const r = rows[Number(n.dataset.i)]; select(r); renderHistory(); openInspector();
   }));
 }
 
@@ -1083,6 +1163,9 @@ $('newChat').addEventListener('click', () => {
 
 /* ---- panels ---- */
 function openInspector() { app.classList.add('show-inspector'); }
+$('deckInspect')?.addEventListener('click', openInspector);
+$('proxyCard')?.addEventListener('click', openInspector);
+$('histRefresh')?.addEventListener('click', refresh);
 function toggleInspector() { app.classList.toggle('show-inspector'); }
 $('inspectorToggle').addEventListener('click', toggleInspector);
 $('inspClose').addEventListener('click', () => app.classList.remove('show-inspector'));
@@ -1165,7 +1248,7 @@ async function checkConfig() {
   return !!cfg.configured;
 }
 function openSetup() { $('setup').hidden = false; setTimeout(() => $('keyInput').focus(), 60); }
-$('keyStatus')?.addEventListener('click', openSetup);
+$('keyStatus')?.addEventListener('click', (e) => { e.stopPropagation(); openSetup(); });
 
 (() => {
   const form = $('keyForm');

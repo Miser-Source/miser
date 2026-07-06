@@ -295,33 +295,48 @@ func runProxy(args []string) error {
 	provider := fs.String("provider", "openai", "provider to proxy: openai or anthropic")
 	addr := fs.String("addr", "127.0.0.1:8788", "address for the local interception proxy")
 	upstream := fs.String("upstream", "", "provider upstream URL")
-	apiKeyEnv := fs.String("api-key-env", "OPENAI_API_KEY", "environment variable containing provider API key")
+	apiKeyEnv := fs.String("api-key-env", "", "environment variable containing provider API key (default OPENAI_API_KEY, or ANTHROPIC_API_KEY for --provider anthropic)")
 	logPath := fs.String("log", ".miser/proxy-logs.jsonl", "append intercepted calls to this JSONL file")
 	cachePath := fs.String("cache", ".miser/exact-cache.json", "persistent exact response cache; empty disables cache")
 	account := fs.String("account", "", "account_id to attach to intercepted rows")
 	integration := fs.String("integration", "", "integration name to attach to intercepted rows")
 	storePrompts := fs.Bool("store-prompts", false, "store full prompt text in proxy logs")
+	mode := fs.String("mode", "individual", "deployment profile: individual or business")
+	workspace := fs.String("workspace", "", "workspace/org name shown in the console (business mode)")
+	budget := fs.Float64("budget", 0, "soft monthly budget in USD; 0 disables budget tracking")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 0 {
-		return fmt.Errorf("usage: miser proxy [--provider openai|anthropic] [--addr 127.0.0.1:8788] [--upstream url] [--api-key-env OPENAI_API_KEY] [--log .miser/proxy-logs.jsonl] [--cache .miser/exact-cache.json] [--account id] [--integration name] [--store-prompts]")
+		return fmt.Errorf("usage: miser proxy [--provider openai|anthropic] [--addr 127.0.0.1:8788] [--upstream url] [--api-key-env NAME] [--log .miser/proxy-logs.jsonl] [--cache .miser/exact-cache.json] [--account id] [--integration name] [--store-prompts] [--mode individual|business] [--workspace name] [--budget usd]")
 	}
-	apiKey := os.Getenv(*apiKeyEnv)
+	keyEnv := *apiKeyEnv
+	if keyEnv == "" {
+		keyEnv = "OPENAI_API_KEY"
+		if *provider == "anthropic" || *provider == "claude" {
+			keyEnv = "ANTHROPIC_API_KEY"
+		}
+	}
+	apiKey := os.Getenv(keyEnv)
 	if apiKey == "" {
-		fmt.Printf("No API key in %s — open the console to connect a provider key.\n", *apiKeyEnv)
+		fmt.Printf("No API key in %s — open the console to connect a provider key.\n", keyEnv)
 	}
 	return miser.ServeProxy(miser.ProxyOptions{
-		Addr:         *addr,
-		Provider:     *provider,
-		Upstream:     *upstream,
-		APIKey:       apiKey,
+		Addr:     *addr,
+		Provider: *provider,
+		Upstream: *upstream,
+		APIKey:   apiKey,
+		// Only pin the env-var name when the user overrode it; otherwise it
+		// follows the active provider (OPENAI_API_KEY / ANTHROPIC_API_KEY).
 		KeyEnv:       *apiKeyEnv,
 		LogPath:      *logPath,
 		CachePath:    *cachePath,
 		AccountID:    *account,
 		Integration:  *integration,
 		StorePrompts: *storePrompts,
+		Mode:         *mode,
+		Workspace:    *workspace,
+		BudgetUSD:    *budget,
 	})
 }
 

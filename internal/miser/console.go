@@ -61,7 +61,7 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	fmt.Fprintln(&b, `<div class="side-foot">`)
 	fmt.Fprintln(&b, `<button class="foot-card" id="proxyCard" title="Open Miser inspector">`)
 	fmt.Fprintln(&b, `<span class="foot-card-ico"><span class="dot"></span></span>`)
-	fmt.Fprintf(&b, `<span class="foot-card-main"><strong>Proxy live</strong><span class="foot-card-sub">%s · key <span id="keyStatus" class="key-status" title="Connect or change provider key">not set</span></span></span>`, html.EscapeString(provider))
+	fmt.Fprintf(&b, `<span class="foot-card-main"><strong>Proxy live</strong><span class="foot-card-sub"><span id="metaProvider">%s</span> · key <span id="keyStatus" class="key-status" title="Connect or change provider key">not set</span></span><span class="foot-card-sub" id="metaWorkspaceRow" hidden><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg> <span id="metaWorkspace"></span></span></span>`, html.EscapeString(provider))
 	fmt.Fprintln(&b, `<svg class="foot-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>`)
 	fmt.Fprintln(&b, `</button>`)
 	fmt.Fprintf(&b, `<button class="account-row" id="settingsBtn"><span class="avatar">%s</span><span class="acct-name">%s</span><span class="acct-sub">· %s</span><svg class="acct-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`,
@@ -172,6 +172,11 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	inspMetric(&b, "m_spend", "$0.00", "Spend after Miser")
 	fmt.Fprintln(&b, `</div>`)
 
+	fmt.Fprintln(&b, `<div class="budget" id="budgetBox" hidden>`)
+	fmt.Fprintln(&b, `<div class="budget-top"><span>Monthly budget</span><strong id="budgetLabel">$0.00 / $0.00</strong></div>`)
+	fmt.Fprintln(&b, `<div class="budget-bar"><i id="budgetFill"></i></div>`)
+	fmt.Fprintln(&b, `</div>`)
+
 	fmt.Fprintln(&b, `<div class="insp-section">`)
 	fmt.Fprintln(&b, `<p class="insp-label">Decision trace</p>`)
 	fmt.Fprintln(&b, `<div id="decision" class="decision"><div class="dec-action"><span class="badge ghost">Idle</span></div><p class="dec-reason">No intercepted request yet. Send a message to see what Miser does with it.</p></div>`)
@@ -195,8 +200,20 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	fmt.Fprintln(&b, `<div class="term-body">`)
 	fmt.Fprintln(&b, `<p class="term-line"><span class="prompt">miser$</span> connect <span id="termProvider">openai</span></p>`)
 	fmt.Fprintln(&b, `<p class="term-out">⚠ No API key found in <code id="termEnv">OPENAI_API_KEY</code>.</p>`)
-	fmt.Fprintln(&b, `<p class="term-out">Paste your provider API key below to route live requests through the Miser proxy.</p>`)
-	fmt.Fprintln(&b, `<p class="term-out dim"># held in memory for this session only · never written to logs or disk</p>`)
+	fmt.Fprintln(&b, `<p class="term-out">Pick a provider, paste its API key, and route live requests through the Miser proxy.</p>`)
+	fmt.Fprintln(&b, `<p class="term-out dim"># key held in memory for this session only · never written to logs or disk</p>`)
+	fmt.Fprintln(&b, `<div class="term-row"><span class="prompt">provider&gt;</span><div class="term-tabs" id="providerTabs">`)
+	fmt.Fprintln(&b, `<button type="button" class="term-tab active" data-provider="openai">OpenAI</button>`)
+	fmt.Fprintln(&b, `<button type="button" class="term-tab" data-provider="anthropic">Claude</button>`)
+	fmt.Fprintln(&b, `</div></div>`)
+	fmt.Fprintln(&b, `<div class="term-row"><span class="prompt">mode&gt;</span><div class="term-tabs" id="modeTabs">`)
+	fmt.Fprintln(&b, `<button type="button" class="term-tab active" data-mode="individual">Individual</button>`)
+	fmt.Fprintln(&b, `<button type="button" class="term-tab" data-mode="business">Business</button>`)
+	fmt.Fprintln(&b, `</div></div>`)
+	fmt.Fprintln(&b, `<div id="bizFields" hidden>`)
+	fmt.Fprintln(&b, `<div class="term-row"><span class="prompt">org&gt;</span><input id="wsInput" class="term-input" autocomplete="organization" spellcheck="false" placeholder="workspace or company name" /></div>`)
+	fmt.Fprintln(&b, `<div class="term-row"><span class="prompt">budget$&gt;</span><input id="budgetInput" class="term-input" type="number" min="0" step="1" placeholder="soft monthly budget in USD (optional)" /></div>`)
+	fmt.Fprintln(&b, `</div>`)
 	fmt.Fprintln(&b, `<form id="keyForm" class="term-form">`)
 	fmt.Fprintln(&b, `<span class="prompt">key&gt;</span>`)
 	fmt.Fprintln(&b, `<input id="keyInput" class="term-input" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-..." />`)
@@ -209,6 +226,7 @@ func RenderConsoleHTML(config ConsoleConfig) string {
 	fmt.Fprintln(&b, `</div>`)
 
 	fmt.Fprintln(&b, `<script>`)
+	fmt.Fprintf(&b, "const PROVIDER = %q;\n", provider)
 	fmt.Fprintln(&b, consoleJS())
 	fmt.Fprintln(&b, `</script>`)
 	fmt.Fprintln(&b, `</body></html>`)
@@ -249,9 +267,9 @@ type modelGroup struct {
 func modelGroups(provider string) []modelGroup {
 	if provider == "anthropic" {
 		return []modelGroup{
-			{"Claude 3.7", []string{"claude-3-7-sonnet-latest"}},
-			{"Claude 3.5", []string{"claude-3-5-sonnet-latest", "claude-3-5-haiku-latest"}},
-			{"Claude 3", []string{"claude-3-opus-latest", "claude-3-haiku-20240307"}},
+			{"Claude 4", []string{"claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5"}},
+			{"Claude 4 (dated)", []string{"claude-opus-4-5", "claude-sonnet-4-5", "claude-opus-4-1", "claude-sonnet-4-20250514"}},
+			{"Claude 3.x (legacy)", []string{"claude-3-7-sonnet-latest", "claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-haiku-20240307"}},
 		}
 	}
 	// Full OpenAI API lineup (chat/completions + responses).
@@ -266,7 +284,7 @@ func modelGroups(provider string) []modelGroup {
 
 func defaultModelFor(provider string) string {
 	if provider == "anthropic" {
-		return "claude-3-5-haiku-latest"
+		return "claude-haiku-4-5"
 	}
 	return "gpt-4o-mini"
 }
@@ -441,6 +459,7 @@ body {
   background: color-mix(in srgb, var(--text) 26%, transparent);
   border: 3px solid transparent; background-clip: padding-box;
 }
+::-webkit-scrollbar-corner { background: transparent; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -804,29 +823,41 @@ body {
   display: flex; flex-direction: column; min-width: 0; overflow: hidden;
 }
 .app:not(.show-inspector) .inspector { border-left: 0; }
-.insp-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-.insp-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
-.insp-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px; border-bottom: 1px solid var(--line); }
-.metric {
-  background: linear-gradient(180deg, var(--surface-2), var(--surface));
-  border: 1px solid var(--line); border-radius: 11px; padding: 12px; display: grid; gap: 4px;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+.insp-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 10px; }
+.insp-head h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
+.insp-metrics {
+  margin: 4px 14px 14px; padding: 1px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 13px; overflow: hidden;
 }
-.metric-val { font-size: 21px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.metric { background: var(--bg-2); padding: 13px 14px; display: grid; gap: 2px; }
+.metric:nth-child(1) { border-top-left-radius: 12px; }
+.metric:nth-child(2) { border-top-right-radius: 12px; }
+.metric:nth-child(3) { border-bottom-left-radius: 12px; }
+.metric:nth-child(4) { border-bottom-right-radius: 12px; }
+.metric-val { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 #m_saved.metric-val { color: var(--good); text-shadow: 0 0 18px color-mix(in srgb, var(--good) 35%, transparent); }
-.metric-lbl { font-size: 11px; color: var(--faint); }
-.insp-section { padding: 14px 16px; border-bottom: 1px solid var(--line); }
-.insp-section.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; border-bottom: 0; }
-.insp-label { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); }
+.metric-lbl { font-size: 11.5px; color: var(--faint); }
+.insp-section { padding: 12px 16px 14px; border-top: 1px solid var(--line); }
+.insp-section.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.insp-label { margin: 0 0 8px; font-size: 12.5px; color: var(--faint); }
 .insp-label-row { display: flex; align-items: center; justify-content: space-between; }
 .decision { display: grid; gap: 8px; }
 .dec-action { display: flex; align-items: center; gap: 8px; }
-.dec-reason { margin: 0; color: var(--muted); font-size: 13px; }
-.dec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
-.dec-cell { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; }
-.dec-cell span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); margin-bottom: 3px; }
-.dec-cell strong { font-size: 13px; font-weight: 600; word-break: break-word; }
-.dec-cell strong.mono { font: 12px var(--mono); color: var(--muted); }
+.dec-reason { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+.kv-list { margin-top: 6px; display: grid; }
+.kv {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  padding: 7px 0; border-top: 1px solid var(--line); min-width: 0;
+}
+.kv:first-child { border-top: 0; }
+.kv > span { flex: none; font-size: 12px; color: var(--faint); }
+.kv > strong {
+  min-width: 0; font-size: 12.5px; font-weight: 600; text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.kv > strong.mono { font: 11.5px var(--mono); color: var(--muted); }
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px;
@@ -872,6 +903,27 @@ body {
 .term-out code, .term-line code { color: var(--accent); }
 .prompt { color: var(--good); margin-right: 8px; user-select: none; }
 .term-form { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.term-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.term-tabs { display: inline-flex; gap: 6px; }
+.term-tab {
+  border: 1px solid var(--line-2); background: transparent; color: var(--muted);
+  font: 12.5px var(--mono); padding: 4px 12px; border-radius: 7px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.term-tab:hover { color: var(--text); border-color: var(--line-2); background: var(--hover); }
+.term-tab.active { background: var(--surface-2); color: var(--text); border-color: color-mix(in srgb, var(--accent) 50%, var(--line-2)); }
+#bizFields { animation: fadeUp .16s ease both; }
+.budget { margin: 0 14px 14px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-2); display: grid; gap: 8px; }
+.budget-top { display: flex; align-items: baseline; justify-content: space-between; }
+.budget-top span { font-size: 11.5px; color: var(--faint); }
+.budget-top strong { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.budget-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.budget-bar i {
+  display: block; height: 100%; width: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--good), color-mix(in srgb, var(--good) 65%, white));
+  transition: width .3s ease;
+}
+.budget-bar i.over { background: linear-gradient(90deg, var(--warn), #ff7a7a); }
 .term-input {
   flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
   color: var(--text); font: 14px var(--mono); caret-color: var(--good);
@@ -1080,18 +1132,18 @@ function select(row) {
   $('decision').innerHTML =
     '<div class="dec-action"><span class="badge ' + d.cls + '">' + escapeHTML(d.action) + '</span></div>' +
     '<p class="dec-reason">' + escapeHTML(d.reason) + '</p>' +
-    '<div class="dec-grid">' +
+    '<div class="kv-list">' +
       cell('Route', escapeHTML((row.provider||'provider') + ' / ' + (row.model||'model'))) +
       cell('Saved', money(d.saved)) +
       cell('Status', escapeHTML(String(row.http_status || '—'))) +
-      cell('Cost basis', escapeHTML(row.cost_basis || '—')) +
+      cell('Cost basis', escapeHTML(row.cost_basis || '—'), true) +
       cell('Fingerprint', escapeHTML(row.request_fingerprint || '—'), true) +
       cell('Latency', (row.latency_ms != null ? Math.round(row.latency_ms) + ' ms' : '—')) +
     '</div>';
   $('inspectorJson').textContent = JSON.stringify(inspectorPayload(row, d), null, 2);
 }
 function cell(label, value, mono) {
-  return '<div class="dec-cell"><span>' + label + '</span><strong' + (mono?' class="mono"':'') + '>' + value + '</strong></div>';
+  return '<div class="kv"><span>' + label + '</span><strong' + (mono?' class="mono"':'') + ' title="' + value + '">' + value + '</strong></div>';
 }
 function inspectorPayload(row, d) {
   return {
@@ -1120,11 +1172,21 @@ $('chatForm').addEventListener('submit', async (e) => {
   const body = appendAssistant();
   $('sendBtn').disabled = true;
   try {
-    const res = await fetch('/v1/chat/completions', {
+    const anthropic = PROVIDER === 'anthropic';
+    const endpoint = anthropic ? '/v1/messages' : '/v1/chat/completions';
+    const payloadBody = anthropic
+      ? { model: $('model').value, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }
+      : { model: $('model').value, messages: [{ role: 'user', content: prompt }] };
+    const res = await fetch(endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: $('model').value, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify(payloadBody)
     });
     const cacheHdr = res.headers.get('X-Miser-Cache');
+    const budgetHdr = res.headers.get('X-Miser-Budget-Status');
+    if (budgetHdr === 'exceeded') {
+      $('cacheHint').textContent = '⚠ monthly budget exceeded';
+      setTimeout(() => $('cacheHint').textContent = '', 4000);
+    }
     const payload = await res.json();
     body.innerHTML = renderMarkdown(assistantText(payload));
     if (cacheHdr) {
@@ -1234,15 +1296,56 @@ $('copyJson').addEventListener('click', async () => {
   } catch (e) {}
 });
 
-/* ---- setup gate: connect a provider API key ---- */
+/* ---- setup gate: pick provider + profile, connect a key ---- */
+const gate = { provider: PROVIDER, mode: 'individual' };
+const KEY_ENVS = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY' };
+const KEY_HINTS = { openai: 'sk-...', anthropic: 'sk-ant-...' };
+
+function renderGate() {
+  $('termProvider').textContent = gate.provider;
+  $('termEnv').textContent = KEY_ENVS[gate.provider] || 'API_KEY';
+  $('keyInput').placeholder = KEY_HINTS[gate.provider] || 'api key';
+  document.querySelectorAll('#providerTabs .term-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.provider === gate.provider));
+  document.querySelectorAll('#modeTabs .term-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.mode === gate.mode));
+  $('bizFields').hidden = gate.mode !== 'business';
+}
+document.querySelectorAll('#providerTabs .term-tab').forEach(t =>
+  t.addEventListener('click', () => { gate.provider = t.dataset.provider; renderGate(); $('keyInput').focus(); }));
+document.querySelectorAll('#modeTabs .term-tab').forEach(t =>
+  t.addEventListener('click', () => { gate.mode = t.dataset.mode; renderGate(); }));
+
+function renderBudget(cfg) {
+  const box = $('budgetBox');
+  if (!box) return;
+  const budget = Number(cfg.budget_usd || 0);
+  box.hidden = budget <= 0;
+  if (budget <= 0) return;
+  const spend = Number(cfg.spend_month_usd || 0);
+  const pctUsed = Math.min(100, (spend / budget) * 100);
+  $('budgetLabel').textContent = money(spend, 2) + ' / ' + money(budget, 2);
+  $('budgetFill').style.width = pctUsed.toFixed(1) + '%';
+  $('budgetFill').classList.toggle('over', !!cfg.budget_exceeded);
+}
+
 async function checkConfig() {
   let cfg;
   try { cfg = await (await fetch('/miser/api/config', { cache: 'no-store' })).json(); }
   catch (e) { return false; }
-  if (cfg.key_env) $('termEnv').textContent = cfg.key_env;
-  if (cfg.provider) $('termProvider').textContent = cfg.provider;
+  if (cfg.provider) gate.provider = cfg.provider;
+  if (cfg.mode) gate.mode = cfg.mode;
+  if (cfg.workspace) { const ws = $('wsInput'); if (ws && !ws.value) ws.value = cfg.workspace; }
+  renderGate();
   const ks = $('keyStatus');
   if (ks) ks.textContent = cfg.configured ? (cfg.masked || 'connected') : 'not set';
+  const mp = $('metaProvider'); if (mp && cfg.provider) mp.textContent = cfg.provider;
+  const wsRow = $('metaWorkspaceRow');
+  if (wsRow) {
+    wsRow.hidden = !cfg.workspace;
+    if (cfg.workspace) $('metaWorkspace').textContent = cfg.workspace;
+  }
+  renderBudget(cfg);
   $('setup').hidden = !!cfg.configured;
   if (!cfg.configured) setTimeout(() => $('keyInput').focus(), 60);
   return !!cfg.configured;
@@ -1267,16 +1370,28 @@ $('keyStatus')?.addEventListener('click', (e) => { e.stopPropagation(); openSetu
     msg.className = 'term-msg'; msg.textContent = 'connecting…';
     connect.disabled = true;
     try {
+      const payload = { key, provider: gate.provider, mode: gate.mode };
+      if (gate.mode === 'business') {
+        payload.workspace = ($('wsInput').value || '').trim();
+        const budget = parseFloat($('budgetInput').value);
+        if (!isNaN(budget) && budget >= 0) payload.budget_usd = budget;
+      }
       const res = await fetch('/miser/api/key', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'failed to set key');
       msg.className = 'term-msg ok'; msg.textContent = '✓ connected ' + (data.masked || '');
       input.value = '';
       const ks = $('keyStatus'); if (ks) ks.textContent = data.masked || 'connected';
-      setTimeout(() => { $('setup').hidden = true; msg.textContent = ''; refresh(); }, 550);
+      if (data.provider && data.provider !== PROVIDER) {
+        // The model picker and playground are rendered per provider — reload.
+        msg.textContent = '✓ connected — switching to ' + data.provider + '…';
+        setTimeout(() => location.reload(), 500);
+        return;
+      }
+      setTimeout(() => { $('setup').hidden = true; msg.textContent = ''; checkConfig(); refresh(); }, 550);
     } catch (err) {
       msg.className = 'term-msg err'; msg.textContent = '✗ ' + err.message;
     } finally { connect.disabled = false; }

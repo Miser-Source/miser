@@ -36,9 +36,11 @@ That can mean exact cache, semantic cache, prompt/context compression, cheaper m
 
 ## Features
 
-- Live OpenAI-compatible proxy at `/v1`
+- Live proxy at `/v1` for **OpenAI** (`/v1/chat/completions`, `/v1/responses`) and **Claude / Anthropic** (`/v1/messages`)
+- Switch provider and connect API keys at runtime from the browser console — no restart needed
+- Individual and business profiles: workspace naming and a soft monthly budget with live `X-Miser-Budget` headers
 - Browser console with chat playground, decision trace, request inspector, and live savings metrics
-- Exact response cache for repeated non-streaming chat/responses calls
+- Exact response cache for repeated non-streaming chat/responses/messages calls
 - JSONL audit for LLM calls, provider usage rows, invoices, and coding-agent aggregates
 - OpenAI organization usage/cost pullers
 - `ccusage` import for Claude Code and coding-agent spend analysis
@@ -86,31 +88,47 @@ go build -o bin/miser ./cmd/miser
 go test ./cmd/... ./internal/...
 ```
 
-### Run The Live Proxy
+### Run The Live Proxy (Individuals)
+
+The fastest path: start the proxy with no key and connect a provider from the browser.
 
 ```bash
-export OPENAI_API_KEY=...
+bin/miser proxy --addr 127.0.0.1:8788
+```
 
+Open `http://127.0.0.1:8788`, pick **OpenAI** or **Claude** in the setup terminal, and paste your API key. Keys are held in memory only — never written to logs or disk. You can also pre-set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` and skip the gate:
+
+```bash
+export ANTHROPIC_API_KEY=...
+bin/miser proxy --provider anthropic --addr 127.0.0.1:8788
+```
+
+Point any OpenAI-compatible client at `http://127.0.0.1:8788/v1`, or any Anthropic client (`/v1/messages`) at the same address when running in Claude mode. Provider can be switched at runtime from the console — no restart.
+
+### Run The Live Proxy (Teams & Businesses)
+
+Business mode adds a workspace label and a **soft monthly budget**. Miser tracks month-to-date spend across restarts (seeded from the proxy log) and stamps every proxied response with `X-Miser-Budget: <spend>/<budget>` and `X-Miser-Budget-Status: ok|exceeded`. Miser warns — it never blocks traffic.
+
+```bash
 bin/miser proxy \
-  --provider openai \
-  --addr 127.0.0.1:8788 \
-  --account openai-personal \
-  --integration codex \
+  --provider anthropic \
+  --mode business \
+  --workspace "Acme Inc" \
+  --budget 500 \
+  --account acme-prod \
+  --integration support-bot \
   --log .miser/proxy-logs.jsonl \
   --cache .miser/exact-cache.json
 ```
 
-Open the console:
+The console shows the workspace next to the proxy status and a live budget bar in the inspector. Use `--account` and `--integration` to attribute spend per team or product, then slice audits with the same flags. Profile and budget can also be updated at runtime via `POST /miser/api/profile`.
 
-```text
-http://127.0.0.1:8788
-```
+Rollout checklist for teams:
 
-Point any OpenAI-compatible client at:
-
-```text
-http://127.0.0.1:8788/v1
-```
+1. Run one proxy per provider account (or per team) with distinct `--account` labels.
+2. Keep `--store-prompts` off (the default) so no prompt text is retained.
+3. Set `--budget` to the monthly cap you want alerted on.
+4. Ship `.miser/proxy-logs.jsonl` into `miser audit` weekly for savings reports.
 
 The console shows:
 
@@ -256,7 +274,9 @@ bin/miser reconcile work/openai_usage.jsonl \
 
 ## Claude And Codex
 
-Miser supports Claude/Codex analysis through imported usage and logs.
+Claude is supported **live**: run `miser proxy --provider anthropic` (or switch to Claude in the console) and point any Anthropic SDK/client at `http://127.0.0.1:8788`. The proxy injects `x-api-key` and `anthropic-version`, exact-caches repeated `/v1/messages` calls, and prices Claude 4.x/3.x models from the published catalog — including prompt-cache reads.
+
+Miser also supports Claude/Codex analysis through imported usage and logs.
 
 For Claude Code or coding-agent aggregate usage:
 

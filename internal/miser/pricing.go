@@ -110,18 +110,28 @@ func openAIModelPricing(model string) (ModelPricing, bool) {
 
 func anthropicModelPricing(model string) (ModelPricing, bool) {
 	switch {
+	// Opus 4.5+ dropped to $5/$25; Opus 4/4.1 and Claude 3 Opus stay $15/$75.
+	case strings.Contains(model, "opus-4-5") || strings.Contains(model, "opus-4.5") ||
+		strings.Contains(model, "opus-4-6") || strings.Contains(model, "opus-4.6") ||
+		strings.Contains(model, "opus-4-7") || strings.Contains(model, "opus-4.7") ||
+		strings.Contains(model, "opus-4-8") || strings.Contains(model, "opus-4.8"):
+		return anthropicPricing(5.00, 25.00), true
 	case strings.Contains(model, "opus-4.1") || strings.Contains(model, "opus 4.1") ||
+		strings.Contains(model, "opus-4-1") ||
 		strings.Contains(model, "opus-4") || strings.Contains(model, "opus 4") ||
 		strings.Contains(model, "claude-3-opus"):
 		return anthropicPricing(15.00, 75.00), true
-	case strings.Contains(model, "sonnet-4.5") || strings.Contains(model, "sonnet 4.5") ||
+	case strings.Contains(model, "sonnet-4.6") || strings.Contains(model, "sonnet-4-6") ||
+		strings.Contains(model, "sonnet-4.5") || strings.Contains(model, "sonnet 4.5") ||
+		strings.Contains(model, "sonnet-4-5") ||
 		strings.Contains(model, "sonnet-4") || strings.Contains(model, "sonnet 4") ||
 		strings.Contains(model, "claude-3-7-sonnet") ||
 		strings.Contains(model, "claude-3.7-sonnet") ||
 		strings.Contains(model, "claude-3-5-sonnet") ||
 		strings.Contains(model, "claude-3.5-sonnet"):
 		return anthropicPricing(3.00, 15.00), true
-	case strings.Contains(model, "haiku-4.5") || strings.Contains(model, "haiku 4.5"):
+	case strings.Contains(model, "haiku-4.5") || strings.Contains(model, "haiku 4.5") ||
+		strings.Contains(model, "haiku-4-5"):
 		return anthropicPricing(1.00, 5.00), true
 	case strings.Contains(model, "haiku-3.5") || strings.Contains(model, "haiku 3.5") ||
 		strings.Contains(model, "claude-3-5-haiku") ||

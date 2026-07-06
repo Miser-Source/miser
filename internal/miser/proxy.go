@@ -27,16 +27,27 @@ type ProxyOptions struct {
 	AccountID    string
 	Integration  string
 	StorePrompts bool
+	Mode         string
+	Workspace    string
+	BudgetUSD    float64
 }
 
 type ProxyServer struct {
-	opts     ProxyOptions
-	upstream *url.URL
-	client   *http.Client
-	cache    *responseCache
-	logger   *jsonlAppender
-	mu       sync.RWMutex
-	apiKey   string
+	opts           ProxyOptions
+	customUpstream bool
+	client         *http.Client
+	cache          *responseCache
+	logger         *jsonlAppender
+
+	mu         sync.RWMutex
+	upstream   *url.URL
+	provider   string
+	apiKey     string
+	mode       string
+	workspace  string
+	budgetUSD  float64
+	monthKey   string
+	monthSpend float64
 }
 
 func (s *ProxyServer) currentKey() string {
@@ -51,33 +62,100 @@ func (s *ProxyServer) setKey(key string) {
 	s.mu.Unlock()
 }
 
+func (s *ProxyServer) currentProvider() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.provider
+}
+
+func (s *ProxyServer) currentUpstream() url.URL {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return *s.upstream
+}
+
+func defaultUpstreamFor(provider string) string {
+	if provider == "anthropic" {
+		return "https://api.anthropic.com"
+	}
+	return "https://api.openai.com"
+}
+
+// setProvider switches the live provider. Unless the server was started with an
+// explicit --upstream override, the upstream URL follows the provider default.
+func (s *ProxyServer) setProvider(provider string) error {
+	if provider != "openai" && provider != "anthropic" {
+		return fmt.Errorf("unknown provider %q; use openai or anthropic", provider)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.provider = provider
+	if !s.customUpstream {
+		parsed, err := url.Parse(defaultUpstreamFor(provider))
+		if err != nil {
+			return err
+		}
+		s.upstream = parsed
+	}
+	return nil
+}
+
 func (s *ProxyServer) keyEnvName() string {
 	if s.opts.KeyEnv != "" {
 		return s.opts.KeyEnv
 	}
-	if s.opts.Provider == "anthropic" {
+	if s.currentProvider() == "anthropic" {
 		return "ANTHROPIC_API_KEY"
 	}
 	return "OPENAI_API_KEY"
 }
 
+// addMonthSpend accrues month-to-date spend, resetting when the month rolls over.
+func (s *ProxyServer) addMonthSpend(cost float64) {
+	now := time.Now().UTC().Format("2006-01")
+	s.mu.Lock()
+	if s.monthKey != now {
+		s.monthKey = now
+		s.monthSpend = 0
+	}
+	s.monthSpend += cost
+	s.mu.Unlock()
+}
+
+func (s *ProxyServer) budgetStatus() (budget, spend float64, exceeded bool) {
+	now := time.Now().UTC().Format("2006-01")
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	spend = s.monthSpend
+	if s.monthKey != now {
+		spend = 0
+	}
+	budget = s.budgetUSD
+	return budget, spend, budget > 0 && spend >= budget
+}
+
 func NewProxyServer(opts ProxyOptions) (*ProxyServer, error) {
+	if opts.Provider == "claude" {
+		opts.Provider = "anthropic"
+	}
 	if opts.Provider == "" {
 		opts.Provider = "openai"
 	}
+	if opts.Provider != "openai" && opts.Provider != "anthropic" {
+		return nil, fmt.Errorf("unknown provider %q; use openai or anthropic", opts.Provider)
+	}
+	customUpstream := opts.Upstream != ""
 	if opts.Upstream == "" {
-		switch opts.Provider {
-		case "openai":
-			opts.Upstream = "https://api.openai.com"
-		case "anthropic", "claude":
-			opts.Provider = "anthropic"
-			opts.Upstream = "https://api.anthropic.com"
-		default:
-			return nil, fmt.Errorf("unknown provider %q; use openai or anthropic", opts.Provider)
-		}
+		opts.Upstream = defaultUpstreamFor(opts.Provider)
 	}
 	if opts.LogPath == "" {
 		opts.LogPath = ".miser/proxy-logs.jsonl"
+	}
+	if opts.Mode == "" {
+		opts.Mode = "individual"
+	}
+	if opts.Mode != "individual" && opts.Mode != "business" {
+		return nil, fmt.Errorf("unknown mode %q; use individual or business", opts.Mode)
 	}
 	parsed, err := url.Parse(opts.Upstream)
 	if err != nil {
@@ -94,14 +172,42 @@ func NewProxyServer(opts ProxyOptions) (*ProxyServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ProxyServer{
-		opts:     opts,
-		upstream: parsed,
-		client:   &http.Client{},
-		cache:    cache,
-		logger:   logger,
-		apiKey:   opts.APIKey,
-	}, nil
+	server := &ProxyServer{
+		opts:           opts,
+		customUpstream: customUpstream,
+		client:         &http.Client{},
+		cache:          cache,
+		logger:         logger,
+		upstream:       parsed,
+		provider:       opts.Provider,
+		apiKey:         opts.APIKey,
+		mode:           opts.Mode,
+		workspace:      opts.Workspace,
+		budgetUSD:      opts.BudgetUSD,
+		monthKey:       time.Now().UTC().Format("2006-01"),
+	}
+	server.monthSpend = monthSpendFromLog(opts.LogPath, server.monthKey)
+	return server, nil
+}
+
+// monthSpendFromLog seeds the month-to-date accumulator from existing proxy logs
+// so budgets survive proxy restarts.
+func monthSpendFromLog(path, monthKey string) float64 {
+	rows, err := loadProxyLogRows(path, 0)
+	if err != nil {
+		return 0
+	}
+	total := 0.0
+	for _, row := range rows {
+		ts, _ := row["timestamp"].(string)
+		if len(ts) < 7 || ts[:7] != monthKey {
+			continue
+		}
+		if cost, ok := row["cost_usd"].(float64); ok {
+			total += cost
+		}
+	}
+	return total
 }
 
 func (s *ProxyServer) Close() error {
@@ -123,21 +229,34 @@ func (s *ProxyServer) Handler() http.Handler {
 	mux.HandleFunc("/miser/api/requests", s.handleConsoleRequests)
 	mux.HandleFunc("/miser/api/config", s.handleConfig)
 	mux.HandleFunc("/miser/api/key", s.handleSetKey)
+	mux.HandleFunc("/miser/api/profile", s.handleProfile)
 	mux.HandleFunc("/", s.handle)
 	return mux
 }
 
+func (s *ProxyServer) configPayload() map[string]interface{} {
+	budget, spend, exceeded := s.budgetStatus()
+	s.mu.RLock()
+	key, provider, mode, workspace := s.apiKey, s.provider, s.mode, s.workspace
+	s.mu.RUnlock()
+	return map[string]interface{}{
+		"configured":      key != "",
+		"provider":        provider,
+		"account":         s.opts.AccountID,
+		"integration":     s.opts.Integration,
+		"key_env":         s.keyEnvName(),
+		"masked":          maskKey(key),
+		"mode":            mode,
+		"workspace":       workspace,
+		"budget_usd":      budget,
+		"spend_month_usd": spend,
+		"budget_exceeded": exceeded,
+	}
+}
+
 func (s *ProxyServer) handleConfig(w http.ResponseWriter, _ *http.Request) {
-	key := s.currentKey()
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"configured":  key != "",
-		"provider":    s.opts.Provider,
-		"account":     s.opts.AccountID,
-		"integration": s.opts.Integration,
-		"key_env":     s.keyEnvName(),
-		"masked":      maskKey(key),
-	})
+	_ = json.NewEncoder(w).Encode(s.configPayload())
 }
 
 func (s *ProxyServer) handleSetKey(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +272,11 @@ func (s *ProxyServer) handleSetKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Key string `json:"key"`
+		Key       string   `json:"key"`
+		Provider  string   `json:"provider"`
+		Mode      string   `json:"mode"`
+		Workspace string   `json:"workspace"`
+		BudgetUSD *float64 `json:"budget_usd"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -166,8 +289,70 @@ func (s *ProxyServer) handleSetKey(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "key is empty"})
 		return
 	}
+	if provider := strings.TrimSpace(body.Provider); provider != "" {
+		if err := s.setProvider(provider); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+	}
+	if err := s.applyProfile(body.Mode, body.Workspace, body.BudgetUSD); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
 	s.setKey(key)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{"configured": true, "masked": maskKey(key)})
+	_ = json.NewEncoder(w).Encode(s.configPayload())
+}
+
+func (s *ProxyServer) applyProfile(mode, workspace string, budget *float64) error {
+	mode = strings.TrimSpace(mode)
+	if mode != "" && mode != "individual" && mode != "business" {
+		return fmt.Errorf("unknown mode %q; use individual or business", mode)
+	}
+	if budget != nil && *budget < 0 {
+		return fmt.Errorf("budget must be >= 0")
+	}
+	s.mu.Lock()
+	if mode != "" {
+		s.mode = mode
+		if mode == "individual" {
+			s.workspace = ""
+		}
+	}
+	if workspace = strings.TrimSpace(workspace); workspace != "" {
+		s.workspace = workspace
+	}
+	if budget != nil {
+		s.budgetUSD = *budget
+	}
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *ProxyServer) handleProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+	var body struct {
+		Mode      string   `json:"mode"`
+		Workspace string   `json:"workspace"`
+		BudgetUSD *float64 `json:"budget_usd"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid request body"})
+		return
+	}
+	if err := s.applyProfile(body.Mode, body.Workspace, body.BudgetUSD); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(s.configPayload())
 }
 
 func maskKey(key string) string {
@@ -191,8 +376,10 @@ func ServeProxy(opts ProxyOptions) error {
 	if addr == "" {
 		addr = "127.0.0.1:8788"
 	}
+	upstream := server.currentUpstream()
 	fmt.Printf("Miser proxy listening: http://%s\n", addr)
-	fmt.Printf("Upstream: %s\n", server.upstream.String())
+	fmt.Printf("Provider: %s (%s mode)\n", server.currentProvider(), server.opts.Mode)
+	fmt.Printf("Upstream: %s\n", upstream.String())
 	fmt.Printf("Logs: %s\n", server.opts.LogPath)
 	if server.cache != nil {
 		fmt.Printf("Exact cache: %s\n", server.opts.CachePath)
@@ -204,7 +391,7 @@ func (s *ProxyServer) handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/miser") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, RenderConsoleHTML(ConsoleConfig{
-			Provider:    s.opts.Provider,
+			Provider:    s.currentProvider(),
 			AccountID:   s.opts.AccountID,
 			Integration: s.opts.Integration,
 			LogPath:     s.opts.LogPath,
@@ -231,6 +418,7 @@ func (s *ProxyServer) handle(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			w.Header().Set("X-Miser-Cache", "HIT")
+			s.addBudgetHeader(w)
 			w.WriteHeader(cached.StatusCode)
 			_, _ = w.Write(cached.Body)
 			s.logCall(r, info, cached.StatusCode, cached.Body, start, "hit", true)
@@ -265,9 +453,25 @@ func (s *ProxyServer) handle(w http.ResponseWriter, r *http.Request) {
 	if cacheable {
 		w.Header().Set("X-Miser-Cache", "MISS")
 	}
+	s.addBudgetHeader(w)
 	w.WriteHeader(resp.StatusCode)
 	_, _ = w.Write(respBody)
 	s.logCall(r, info, resp.StatusCode, respBody, start, "miss", false)
+}
+
+// addBudgetHeader surfaces soft-budget state to clients on every proxied
+// response. Miser warns, it does not block.
+func (s *ProxyServer) addBudgetHeader(w http.ResponseWriter) {
+	budget, spend, exceeded := s.budgetStatus()
+	if budget <= 0 {
+		return
+	}
+	status := "ok"
+	if exceeded {
+		status = "exceeded"
+	}
+	w.Header().Set("X-Miser-Budget-Status", status)
+	w.Header().Set("X-Miser-Budget", fmt.Sprintf("%.4f/%.2f", spend, budget))
 }
 
 func (s *ProxyServer) handleConsoleRequests(w http.ResponseWriter, r *http.Request) {
@@ -287,21 +491,27 @@ func (s *ProxyServer) handleConsoleRequests(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *ProxyServer) newUpstreamRequest(original *http.Request, body []byte) (*http.Request, error) {
-	target := *s.upstream
-	target.Path = singleJoiningSlash(s.upstream.Path, original.URL.Path)
+	target := s.currentUpstream()
+	provider := s.currentProvider()
+	target.Path = singleJoiningSlash(target.Path, original.URL.Path)
 	target.RawQuery = original.URL.RawQuery
 	req, err := http.NewRequestWithContext(original.Context(), original.Method, target.String(), bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	req.Header = original.Header.Clone()
-	req.Host = s.upstream.Host
-	if key := s.currentKey(); key != "" && req.Header.Get("Authorization") == "" {
-		if s.opts.Provider == "anthropic" {
-			req.Header.Set("x-api-key", key)
-		} else {
+	req.Host = target.Host
+	if key := s.currentKey(); key != "" {
+		if provider == "anthropic" {
+			if req.Header.Get("x-api-key") == "" && req.Header.Get("Authorization") == "" {
+				req.Header.Set("x-api-key", key)
+			}
+		} else if req.Header.Get("Authorization") == "" {
 			req.Header.Set("Authorization", "Bearer "+key)
 		}
+	}
+	if provider == "anthropic" && req.Header.Get("anthropic-version") == "" {
+		req.Header.Set("anthropic-version", "2023-06-01")
 	}
 	req.Header.Set("X-Miser-Proxy", "1")
 	return req, nil
@@ -309,6 +519,7 @@ func (s *ProxyServer) newUpstreamRequest(original *http.Request, body []byte) (*
 
 func (s *ProxyServer) logCall(r *http.Request, info proxyRequestInfo, status int, responseBody []byte, start time.Time, cacheStatus string, cacheHit bool) {
 	latency := int(time.Since(start).Milliseconds())
+	provider := s.currentProvider()
 	usage := usageFromResponse(responseBody)
 	inputTokens := usage.InputTokens
 	outputTokens := usage.OutputTokens
@@ -319,7 +530,7 @@ func (s *ProxyServer) logCall(r *http.Request, info proxyRequestInfo, status int
 	cost := 0.0
 	cacheSaved := 0.0
 	costBasis := "unpriced_proxy_usage"
-	if priced, pricing, ok := PriceTokenUsage(s.opts.Provider, model, inputTokens, outputTokens, usage.CachedInputTokens); ok {
+	if priced, pricing, ok := PriceTokenUsage(provider, model, inputTokens, outputTokens, usage.CachedInputTokens); ok {
 		if cacheHit {
 			cacheSaved = priced
 		} else {
@@ -331,8 +542,9 @@ func (s *ProxyServer) logCall(r *http.Request, info proxyRequestInfo, status int
 	if cacheHit {
 		costBasis = "miser_exact_cache"
 	}
+	s.addMonthSpend(cost)
 
-	prompt := fmt.Sprintf("%s proxy request path=%s model=%s fingerprint=%s", s.opts.Provider, r.URL.Path, model, info.Fingerprint)
+	prompt := fmt.Sprintf("%s proxy request path=%s model=%s fingerprint=%s", provider, r.URL.Path, model, info.Fingerprint)
 	if s.opts.StorePrompts {
 		prompt = info.Prompt
 	}
@@ -340,7 +552,7 @@ func (s *ProxyServer) logCall(r *http.Request, info proxyRequestInfo, status int
 		"id":                   "miser_proxy_" + time.Now().UTC().Format("20060102T150405.000000000"),
 		"timestamp":            time.Now().UTC().Format(time.RFC3339),
 		"workflow":             proxyWorkflow(r.URL.Path),
-		"provider":             s.opts.Provider,
+		"provider":             provider,
 		"model":                model,
 		"prompt":               prompt,
 		"input_tokens":         inputTokens,
@@ -370,9 +582,9 @@ func (s *ProxyServer) logProxyError(r *http.Request, info proxyRequestInfo, star
 		"id":                  "miser_proxy_error_" + time.Now().UTC().Format("20060102T150405.000000000"),
 		"timestamp":           time.Now().UTC().Format(time.RFC3339),
 		"workflow":            proxyWorkflow(r.URL.Path),
-		"provider":            s.opts.Provider,
+		"provider":            s.currentProvider(),
 		"model":               firstNonEmpty(info.Model, "unknown"),
-		"prompt":              fmt.Sprintf("%s proxy error path=%s fingerprint=%s", s.opts.Provider, r.URL.Path, info.Fingerprint),
+		"prompt":              fmt.Sprintf("%s proxy error path=%s fingerprint=%s", s.currentProvider(), r.URL.Path, info.Fingerprint),
 		"input_tokens":        estimateTokens(info.Prompt),
 		"output_tokens":       0,
 		"cost_usd":            0,
@@ -454,6 +666,15 @@ func usageFromResponse(body []byte) proxyUsage {
 	if cached == 0 {
 		cached = nestedJSONInt(usage, "input_tokens_details", "cached_tokens")
 	}
+	if cached == 0 {
+		// Anthropic reports prompt-cache reads at the top level of usage, and
+		// unlike OpenAI its input_tokens EXCLUDES those reads — normalize so
+		// InputTokens always includes cached tokens.
+		if anthropicCached := firstJSONInt(usage, "cache_read_input_tokens"); anthropicCached > 0 {
+			cached = anthropicCached
+			input += anthropicCached
+		}
+	}
 	return proxyUsage{Model: model, InputTokens: input, OutputTokens: output, CachedInputTokens: cached}
 }
 
@@ -476,7 +697,9 @@ func isCacheableRequest(r *http.Request, info proxyRequestInfo) bool {
 		return false
 	}
 	path := r.URL.Path
-	return strings.HasSuffix(path, "/chat/completions") || strings.HasSuffix(path, "/responses")
+	return strings.HasSuffix(path, "/chat/completions") ||
+		strings.HasSuffix(path, "/responses") ||
+		strings.HasSuffix(path, "/messages")
 }
 
 func proxyWorkflow(path string) string {
@@ -485,6 +708,8 @@ func proxyWorkflow(path string) string {
 		return "proxy_chat_completion"
 	case strings.Contains(path, "responses"):
 		return "proxy_response"
+	case strings.Contains(path, "messages"):
+		return "proxy_messages"
 	default:
 		return "proxy_llm_request"
 	}
